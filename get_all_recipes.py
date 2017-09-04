@@ -4,8 +4,10 @@ file_to_read = open('url_list', 'r')
 
 id = 0
 url = file_to_read.readline()
-print(url)
+cur = 0
 while url:
+    print(cur)
+    cur += 1
     file_to_write = open('recipes_html/recipe' + str(id) + '.html', 'wb')
     page = urllib.request.urlopen(url)
     bytes = page.read().decode('utf8')
