@@ -1,84 +1,93 @@
-from bs4 import BeautifulSoup
-import urllib.request
+file_name = "recipes_html/recipe"
 
-recipe_link = urllib.request.urlopen(
-    "https://www.ah.nl/allerhande/recept/R-R1188623/thaise-noedels-met-varkensreepjes-en-wortellinten")
-recipe_html = recipe_link.read()
-recipe_link.close()
+# loop over all recipes and select the ingredients
+for num in range(3):  # 999
 
-soup = BeautifulSoup(recipe_html, "html.parser")  # take html and make searchable tree
+    recipe_data = dict()
 
-# print(soup.title.string)  # get page title
-# print(soup.body)
+    # open and read in the html file
+    file = open(file_name + str(num) + ".html")
+    html = file.read()
 
-# 4 personen, 615 kcal voedingswaarden, 25 min. bereiden
-#
-# <h2 class="hidden-phones">Naast échte noedels eet je vanavond oranje noedel-lookalikes: wortellinten. </h2>
-# </header> </section>
-# section class="info hidden-phones">
-# <ul class="short">
-# <li><div class="icon icon-course"></div><span>hoofdgerecht</span></li>
-# <li><div class="icon icon-people"></div><span><a class="servings js-scaler__scrollto">4 personen</a></span></li>
-# <li><div class="icon icon-nutritional"></div><span>615 kcal <a class="more" href="#">voedingswaarden</a></span></li>
-# <li class="cooking-time">
-# <ul>
-# <li content="PT25M"><div class="icon icon-time"></div>25 min. bereiden</li>
-# </ul> </li> </ul> <form action="/allerhande/cartridges/PageSlot/PageSlot.jsp;WLSESSIONID=J8NM_d6lwMqBJyeutBGT4VYxG0rMne29Y4CEVC1CwrEFnsTXBIER!2085701064?_DARGS=/allerhande/cartridges/RecipeDetail2.0/Summary.jsp.rateRecipeForm" id="rateRecipeForm" method="POST" style="display: none;"><div style="display:none"><input name="_dyncharset" type="hidden" value="UTF-8"/> </div><div style="display:none"><input name="_dynSessConf" type="hidden" value="-1184681002497417532"/> </div><input name="/allerhande/rating/RateRecipeFormHandler.recipeId" type="hidden" value="1188623"/><input name="_D:/allerhande/rating/RateRecipeFormHandler.recipeId" type="hidden" value=" "/><input id="submitRatingValue" name="/allerhande/rating/RateRecipeFormHandler.rating" size="1" type="hidden" value="3"/><input name="_D:/allerhande/rating/RateRecipeFormHandler.rating" type="hidden" value=" "/><input name="/allerhande/rating/RateRecipeFormHandler.rateRecipe" type="hidden" value="true"/><input name="_D:/allerhande/rating/RateRecipeFormHandler.rateRecipe" type="hidden" value=" "/><div style="display:none"><input name="_DARGS" type="hidden" value="/allerhande/cartridges/RecipeDetail2.0/Summary.jsp.rateRecipeForm"/> </div></form>
-# <div class="rating ">
+    # split in lines and focus on ingredients
+    html_list = html.splitlines()
+    x_0 = [i for i in range(len(html_list)) if "list shopping ingredient-selector-list" in html_list[i]][0]
+    x_n = [i for i in range(len(html_list)) if 'div id="ingredients_to_shoplist"' in html_list[i]][0]
+    html_ingredients = html_list[x_0:x_n]
 
-list_child = []
-list_child2 = []
-list_child3 = []
-list_child4 = []
-for child in soup.body.children:
-    list_child.append(child)
+    # get all ingredient classes
+    ind = []
+    for i in range(len(html_ingredients)):
+        if 'itemprop="ingredients"' in html_ingredients[i]:
+            ind.append(i)
+    ind.append(-1)
 
-for child in list_child[3].children:
-    list_child2.append(child)
+    ingredient_info = []
+    for i in range(len(ind) - 1):
+        ingredient_info.append(html_ingredients[ind[i]:ind[i + 1]])
 
-for child in list_child2[3].children:
-    # print('-'*50)
-    # print(child)
-    list_child3.append(child)
+    ingredients = []
+    for single_ingredient in ingredient_info:
+        # data - description - singular = "geschilde bospeen"
+        # data - quantity = "8"
+        # data - quantity - unit - singular = ""
+        ingredient = dict()
+        for j in single_ingredient:
+            if "data-description-singular" in j:
+                ingredient['description'] = j[j.index('"') + 1:-1]
+            if "data-quantity" in j and "unit" not in j:
+                ingredient['quantity'] = j[j.index('"') + 1:-1]
+            if "data-quantity-unit-singular" in j:
+                ingredient['unit'] = j[j.index('"') + 1:-1]
+        ingredients.append(ingredient)
+    recipe_data['ingredients'] = ingredients
 
-ts = list_child3[-2]
-for child in ts.children:
-    ts = child
+    details_start = [i for i in range(len(html_list)) if 'window.dataLayer' in html_list[i]][0]
+    details = html_list[details_start:]
 
-strt = ts.find('context": {')
-ts = ts[strt::]
-ss = ts.find("{")
-nd = ts.find("}")
-chart = ts[(ss+1):nd]
-elmst = chart.split(',')
-# for j in elmst:
-#     print("-"*50)
-#     print(j)
 
-recipe_details = dict()
+    def find_end(_input):
+        for i in range(len(_input)):
+            if "ingredienten" in _input[i]:
+                return i
 
-for i in elmst:
-    if "titel" in i:
-        recipe_details['titel'] = i.split(":")[1][1:-2]
-    if "personen" in i:
-        recipe_details['personen'] = i.split(":")[1][1:-1]
-    if "bereidingstijd" in i:
-        recipe_details['bereidingstijd'] = i.split(":")[1][1:-1]
-    if "calorien" in i:
-        recipe_details['calorien'] = i.split(":")[1][1:-1]
 
-for i in range(len(elmst)):
-    if "tags" in elmst[i]:
-        start = i
-    if "ingredienten" in elmst[i]:
-        end = i
+    details_end = find_end(details)
+    for i in details[:details_end]:
+        if "titel" in i:
+            recipe_data['title'] = i.split(":")[1][1:-2]
+        if "gang" in i:
+            recipe_data['course'] = i.split(":")[1][1:-2]
+        if "personen" in i:
+            recipe_data['persons'] = int(i.split(":")[1][1:-2])
+        if "bereidingstijd" in i:
+            recipe_data['time'] = int(i.split(":")[1][1:-2])
+        if "calorien" in i:
+            recipe_data['calories'] = int(float(i.split(":")[1][1:-2]))
 
-print(elmst[start:end])
-print(elmst[end:])
+    final_tags = []
+    for i in range(len(details[:details_end])):
+        if "tags" in details[:details_end][i]:
+            tags = details[:details_end][i+2:-1]
+            for j in (tags):
+                final_tags.append(''.join(j.split()))
 
-# for i in elmst:
-#     if "tags" in i:
-#         recipe_details['tags'] = i.split(":")[1][1:-2]
-#     if "ingredienten" in i:
-#         recipe_details['ingredienten'] = i.split(":")[1][1:-2]
-print(recipe_details)
+    recipe_data['tags'] = final_tags
+    print(recipe_data)
+
+            # < script >
+            # window.dataLayer = {
+            #     "page": {
+            #         "type": "recept",
+            #         "context": {
+            #             "titel": "Vegan carrot hotdog",
+            #             "gang": "hoofdgerecht",
+            #             "personen": "8",
+            #             "bereidingstijd": "1460",
+            #             "calorien": "230.0",
+            #             "tags": [
+            #
+            #                 "lactosevrij",
+            #                 "veganistisch",
+            #                 "vegetarisch"
+            #             ],

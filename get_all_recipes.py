@@ -14,4 +14,4 @@ while url:
     file_to_write.write(bytes.encode('utf8'))
     page.close()
     url = file_to_read.readline()
-    id += 1;
+    id += 1
